@@ -1,0 +1,38 @@
+{
+  "spoke_id": "inflation",
+  "label": "Inflation Models",
+  "models": [
+    {
+      "id": "fisher-equation",
+      "name": "Fisher Equation",
+      "short_description": "The foundational identity linking nominal rates, real rates, and expected inflation — the bridge between nominal and inflation-linked bond markets.",
+      "family": "inflation",
+      "subcategory": "nominal",
+      "tags": ["fisher", "nominal-real", "inflation-expectation", "identity"],
+      "year_introduced": 1930,
+      "key_paper": "Fisher (1930)",
+      "complexity": "foundational",
+      "color_accent": "#e3b341",
+      "formula": "(1+i) = (1+r)(1+πe)",
+      "products": ["TIPS", "inflation swaps", "nominal treasuries"],
+      "related_models": ["breakeven-inflation"],
+      "key_insight": "Nominal rates embed both real compensation and inflation expectations."
+    },
+    {
+      "id": "breakeven-inflation",
+      "name": "Breakeven Inflation",
+      "short_description": "Market-implied inflation from the spread between nominal and inflation-linked bonds — where TIPS and nominals break even.",
+      "family": "inflation",
+      "subcategory": "market",
+      "tags": ["breakeven", "tips-spread", "market-implied", "inflation-risk-premium"],
+      "year_introduced": 1997,
+      "key_paper": "Ang, Bekaert & Wei (2008)",
+      "complexity": "intermediate",
+      "color_accent": "#e3b341",
+      "formula": "BEI = y_nominal - y_real",
+      "products": ["TIPS", "inflation swaps", "breakeven forwards"],
+      "related_models": ["fisher-equation"],
+      "key_insight": "Breakeven = inflation expectation + risk premium + liquidity premium."
+    }
+  ]
+}

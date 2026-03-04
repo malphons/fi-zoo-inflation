@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="beiFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0d06050"/>
+      <stop offset="100%" stop-color="#f0d06008"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#bg2)" rx="12"/>
+  <!-- title -->
+  <text x="160" y="24" fill="#e6edf3" font-size="13" font-weight="bold" text-anchor="middle" font-family="sans-serif">Breakeven Inflation</text>
+  <!-- formula -->
+  <text x="160" y="42" fill="#f0d060" font-size="10" text-anchor="middle" font-family="monospace">BEI = y_nom - y_real</text>
+  <!-- shaded BEI area between curves -->
+  <path d="M40,90 Q70,86 100,82 Q140,76 180,70 Q220,65 260,60 Q280,57 295,54
+           L295,115 Q280,118 260,120 Q220,125 180,130 Q140,135 100,138 Q70,141 40,145 Z"
+        fill="url(#beiFill)"/>
+  <!-- nominal curve (upper, blue) -->
+  <polyline fill="none" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+    points="40,90 65,87 90,84 115,80 140,76 165,72 190,69 215,65 240,62 265,59 290,55 295,54"/>
+  <!-- real/TIPS curve (lower, green) -->
+  <polyline fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+    points="40,145 65,142 90,140 115,137 140,135 165,132 190,130 215,127 240,123 265,120 290,117 295,115"/>
+  <!-- BEI spread markers at key tenors -->
+  <!-- 2Y -->
+  <line x1="65" y1="87" x2="65" y2="142" stroke="#f0d060" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+  <text x="65" y="118" fill="#f0d060" font-size="7" text-anchor="middle" font-family="monospace">2Y</text>
+  <!-- 5Y -->
+  <line x1="140" y1="76" x2="140" y2="135" stroke="#f0d060" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+  <text x="140" y="109" fill="#f0d060" font-size="7" text-anchor="middle" font-family="monospace">5Y</text>
+  <!-- 10Y -->
+  <line x1="215" y1="65" x2="215" y2="127" stroke="#f0d060" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="215" y="100" fill="#f0d060" font-size="8" font-weight="bold" text-anchor="middle" font-family="monospace">10Y BEI</text>
+  <!-- 30Y -->
+  <line x1="290" y1="55" x2="290" y2="117" stroke="#f0d060" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+  <text x="283" y="89" fill="#f0d060" font-size="7" text-anchor="end" font-family="monospace">30Y</text>
+  <!-- curve labels -->
+  <text x="42" y="86" fill="#58a6ff" font-size="8" font-family="monospace">Nominal</text>
+  <text x="42" y="158" fill="#3fb950" font-size="8" font-family="monospace">TIPS</text>
+  <!-- axis labels -->
+  <text x="165" y="185" fill="#8b949e" font-size="10" text-anchor="middle" font-family="sans-serif">Maturity</text>
+  <text x="14" y="105" fill="#8b949e" font-size="10" text-anchor="middle" font-family="sans-serif" transform="rotate(-90,14,105)">Yield (%)</text>
+</svg>

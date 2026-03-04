@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breakeven Inflation — Interactive Dashboard</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-inset: #0d1117;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #f0d060;
+  --accent-dim: #f0d06030;
+  --nominal: #58a6ff;
+  --real: #3fb950;
+  --bei: #f0d060;
+  --exp-inf: #e3b341;
+  --risk-prem: #f0883e;
+  --liq-prem: #da3633;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+}
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.header .badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.header h1 span { color: var(--accent); }
+.header .formula-tag {
+  color: var(--text-muted);
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  margin-left: auto;
+}
+
+/* Layout */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.full-width { grid-column: 1 / -1; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+}
+.card h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.card h2 .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Canvas */
+canvas {
+  width: 100%;
+  height: 320px;
+  display: block;
+  border-radius: 6px;
+}
+canvas.short { height: 260px; }
+
+/* Slider groups */
+.slider-group {
+  margin-bottom: 0.75rem;
+}
+.slider-group label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+.slider-group label span.val {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 600;
+}
+.slider-group input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* Slider with color coding */
+.slider-nominal input[type="range"] { accent-color: var(--nominal); }
+.slider-nominal .val { color: var(--nominal); }
+.slider-real input[type="range"] { accent-color: var(--real); }
+.slider-real .val { color: var(--real); }
+
+/* Callout */
+.callout {
+  background: var(--bg-inset);
+  border-left: 3px solid var(--accent);
+  padding: 1rem 1.25rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.callout strong { color: var(--text); }
+
+/* Decomposition bars */
+.decomp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+}
+.decomp-row .decomp-label {
+  width: 130px;
+  text-align: right;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.decomp-row .decomp-track {
+  flex: 1;
+  height: 22px;
+  background: var(--bg-inset);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.decomp-row .decomp-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  font-size: 0.7rem;
+  color: #fff;
+  font-family: monospace;
+  font-weight: 600;
+}
+.decomp-row .decomp-val {
+  width: 55px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+/* Stacked bar */
+.stacked-bar {
+  height: 32px;
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.stacked-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-family: monospace;
+  font-weight: 600;
+  color: #0d1117;
+  transition: width 0.4s ease;
+  min-width: 30px;
+}
+
+/* Forward rates table */
+.fwd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 0.75rem;
+}
+.fwd-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.fwd-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #21262d;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+}
+.fwd-table tr:hover { background: #21262d44; }
+
+/* Interpretation panel */
+.interp-panel {
+  background: var(--bg-inset);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+.interp-panel h3 {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+}
+.interp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.interp-item .interp-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  color: var(--accent);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .container { grid-template-columns: 1fr; }
+  .full-width { grid-column: 1; }
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* Legend */
+.legend-row {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <span class="badge">Intermediate</span>
+    <h1><span>Breakeven Inflation</span> Dashboard</h1>
+    <span class="formula-tag">BEI = y<sub>nominal</sub> &minus; y<sub>real</sub></span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ============================================================ -->
+  <!-- KEY VISUAL: Two yield curves with BEI spread                  -->
+  <!-- ============================================================ -->
+  <div class="card full-width">
+    <h2><span class="dot"></span>Nominal &amp; Real Yield Curves with Breakeven Spread</h2>
+    <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:0.5rem;">
+      The <strong style="color:var(--bei);">shaded area</strong> between the nominal and real (TIPS) yield curves
+      is the <strong style="color:var(--bei);">breakeven inflation rate</strong> at each maturity.
+      Use the sliders to explore different curve shapes.
+    </p>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--nominal);"></div>Nominal Treasury</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--real);"></div>TIPS (Real)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--bei);opacity:0.4;"></div>Breakeven Inflation</div>
+    </div>
+    <canvas id="mainCurveCanvas"></canvas>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+      <div>
+        <h3 style="font-size:0.75rem;color:var(--nominal);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Nominal Curve</h3>
+        <div class="slider-group slider-nominal">
+          <label>2Y Nominal <span class="val" id="n2v">4.20%</span></label>
+          <input type="range" min="0" max="10" step="0.05" value="4.2" id="n2" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-nominal">
+          <label>5Y Nominal <span class="val" id="n5v">4.00%</span></label>
+          <input type="range" min="0" max="10" step="0.05" value="4.0" id="n5" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-nominal">
+          <label>10Y Nominal <span class="val" id="n10v">4.25%</span></label>
+          <input type="range" min="0" max="10" step="0.05" value="4.25" id="n10" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-nominal">
+          <label>30Y Nominal <span class="val" id="n30v">4.50%</span></label>
+          <input type="range" min="0" max="10" step="0.05" value="4.5" id="n30" oninput="updateAll()">
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:0.75rem;color:var(--real);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">TIPS (Real) Curve</h3>
+        <div class="slider-group slider-real">
+          <label>2Y Real <span class="val" id="r2v">1.80%</span></label>
+          <input type="range" min="-2" max="8" step="0.05" value="1.8" id="r2" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-real">
+          <label>5Y Real <span class="val" id="r5v">1.70%</span></label>
+          <input type="range" min="-2" max="8" step="0.05" value="1.7" id="r5" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-real">
+          <label>10Y Real <span class="val" id="r10v">1.90%</span></label>
+          <input type="range" min="-2" max="8" step="0.05" value="1.9" id="r10" oninput="updateAll()">
+        </div>
+        <div class="slider-group slider-real">
+          <label>30Y Real <span class="val" id="r30v">2.10%</span></label>
+          <input type="range" min="-2" max="8" step="0.05" value="2.1" id="r30" oninput="updateAll()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- BREAKEVEN TERM STRUCTURE                                      -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Breakeven Inflation Term Structure</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      The breakeven curve shows market-implied inflation at each maturity.
+      An upward-sloping BEI curve suggests the market expects higher inflation over longer horizons.
+    </p>
+    <canvas id="beiCurveCanvas" class="short"></canvas>
+    <div id="beiReadout" style="margin-top:0.75rem;font-size:0.82rem;color:var(--text-muted);"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- DECOMPOSITION                                                 -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>BEI Decomposition</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      Breakeven inflation is <em>not</em> a pure measure of expected inflation.
+      It includes a risk premium and a liquidity premium (TIPS are less liquid than nominals).
+    </p>
+
+    <div style="background:var(--bg-inset);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+      <div style="text-align:center;font-family:'Georgia',serif;font-style:italic;color:var(--text);font-size:0.95rem;">
+        BEI = <span style="color:var(--exp-inf);">Expected Inflation</span>
+        + <span style="color:var(--risk-prem);">Inflation Risk Premium</span>
+        &minus; <span style="color:var(--liq-prem);">TIPS Liquidity Premium</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <label>10Y Expected Inflation <span class="val" style="color:var(--exp-inf);" id="dExpV">2.30%</span></label>
+      <input type="range" min="0" max="6" step="0.05" value="2.3" id="dExp" oninput="updateDecomp()" style="accent-color:var(--exp-inf);">
+    </div>
+    <div class="slider-group">
+      <label>Inflation Risk Premium <span class="val" style="color:var(--risk-prem);" id="dRpV">0.20%</span></label>
+      <input type="range" min="-0.5" max="1.5" step="0.05" value="0.2" id="dRp" oninput="updateDecomp()" style="accent-color:var(--risk-prem);">
+    </div>
+    <div class="slider-group">
+      <label>TIPS Liquidity Premium <span class="val" style="color:var(--liq-prem);" id="dLpV">0.15%</span></label>
+      <input type="range" min="0" max="1" step="0.05" value="0.15" id="dLp" oninput="updateDecomp()" style="accent-color:var(--liq-prem);">
+    </div>
+
+    <div id="decompBars"></div>
+
+    <div style="margin-top:0.75rem;">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.3rem;">Stacked Composition of BEI</div>
+      <div class="stacked-bar" id="stackedBar"></div>
+      <div style="text-align:center;margin-top:0.5rem;">
+        <span style="font-size:1.3rem;font-weight:700;color:var(--bei);font-family:monospace;" id="totalBEI">2.35%</span>
+        <span style="font-size:0.8rem;color:var(--text-muted);"> implied 10Y BEI</span>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Key insight:</strong> When TIPS liquidity is poor (e.g., during crises),
+      the liquidity premium widens, making breakevens understate true inflation expectations.
+      Conversely, a positive risk premium means breakevens <em>overstate</em> expected inflation.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- FORWARD BREAKEVENS                                            -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Forward Breakeven Rates</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      Forward breakevens strip out near-term inflation to reveal what the market expects
+      for inflation <em>between</em> two future dates. The 5Y5Y forward is the most watched
+      measure by central banks.
+    </p>
+    <canvas id="fwdCanvas" class="short"></canvas>
+
+    <table class="fwd-table" id="fwdTable">
+      <thead>
+        <tr><th>Forward Period</th><th>Spot BEI Start</th><th>Spot BEI End</th><th>Forward BEI</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="callout">
+      <strong>The 5Y5Y forward breakeven</strong> is the Fed&rsquo;s preferred measure of
+      long-run inflation expectations. It captures what the market expects inflation to average
+      from year 5 to year 10 &mdash; stripping out transitory near-term effects.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- INTERPRETATION PANEL                                          -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>What Does the Market Expect?</h2>
+    <div class="interp-panel" id="interpPanel">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- HISTORICAL BREAKEVENS                                         -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Historical Breakevens vs. Realized Inflation</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      How well do breakevens predict actual inflation? A stylized comparison of
+      10Y breakeven rates versus subsequent realized CPI inflation.
+    </p>
+    <canvas id="histCanvas" class="short"></canvas>
+    <div class="legend-row" style="margin-top:0.5rem;">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--bei);"></div>10Y Breakeven (at time)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#da3633;"></div>Realized CPI (subsequent)</div>
+    </div>
+    <div class="callout">
+      <strong>Observation:</strong> Breakevens generally track inflation trends but can diverge
+      significantly during crises (2008, 2020) due to liquidity dislocations, and during supply
+      shocks (2021&ndash;22) when inflation exceeded expectations.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- EDUCATIONAL                                                   -->
+  <!-- ============================================================ -->
+  <div class="card full-width">
+    <h2><span class="dot"></span>Understanding Breakeven Inflation</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem;">
+      <div style="background:var(--bg-inset);border-radius:8px;padding:1rem;">
+        <h3 style="font-size:0.8rem;color:var(--nominal);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">
+          What It Is
+        </h3>
+        <p style="color:var(--text-muted);font-size:0.82rem;">
+          The breakeven inflation rate is the spread between a nominal Treasury yield
+          and a TIPS (real) yield at the same maturity. It is the inflation rate at which
+          an investor is indifferent between holding the nominal bond and the inflation-linked bond.
+        </p>
+      </div>
+      <div style="background:var(--bg-inset);border-radius:8px;padding:1rem;">
+        <h3 style="font-size:0.8rem;color:var(--bei);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">
+          How to Trade It
+        </h3>
+        <ul style="color:var(--text-muted);font-size:0.82rem;list-style:none;">
+          <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--bei);">
+            <strong style="color:var(--text);">Buy breakevens:</strong> Buy TIPS, sell nominals.
+            Profits if realized inflation exceeds the BEI rate.
+          </li>
+          <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--risk-prem);">
+            <strong style="color:var(--text);">Sell breakevens:</strong> Sell TIPS, buy nominals.
+            Profits if realized inflation is below the BEI rate.
+          </li>
+          <li style="padding-left:1rem;border-left:2px solid var(--real);">
+            <strong style="color:var(--text);">Inflation swaps:</strong> Achieve similar exposure
+            without balance sheet constraints.
+          </li>
+        </ul>
+      </div>
+      <div style="background:var(--bg-inset);border-radius:8px;padding:1rem;">
+        <h3 style="font-size:0.8rem;color:var(--risk-prem);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">
+          Pitfalls &amp; Nuances
+        </h3>
+        <ul style="color:var(--text-muted);font-size:0.82rem;list-style:none;">
+          <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--liq-prem);">
+            <strong style="color:var(--text);">Liquidity premium:</strong> TIPS are less liquid;
+            their yields include a premium, biasing BEI down.
+          </li>
+          <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--risk-prem);">
+            <strong style="color:var(--text);">Risk premium:</strong> Investors demand compensation
+            for inflation uncertainty, biasing BEI up.
+          </li>
+          <li style="padding-left:1rem;border-left:2px solid var(--nominal);">
+            <strong style="color:var(--text);">CPI vs. PCE:</strong> TIPS are linked to CPI,
+            but the Fed targets PCE. The historical CPI&ndash;PCE wedge is ~30 bps.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Breakeven Inflation Dashboard &mdash; Fixed Income Model Zoo &mdash;
+  <a href="../../">Back to Inflation Models</a>
+</div>
+
+<script>
+/* ================================================================
+   BREAKEVEN INFLATION INTERACTIVE DASHBOARD
+   ================================================================ */
+
+// ---- Tenor points and interpolation ----
+const keyTenors = [2, 5, 10, 30];
+const allTenors = [1, 2, 3, 5, 7, 10, 15, 20, 30];
+
+function getSliderVals() {
+  const n = {
+    2: parseFloat(document.getElementById('n2').value),
+    5: parseFloat(document.getElementById('n5').value),
+    10: parseFloat(document.getElementById('n10').value),
+    30: parseFloat(document.getElementById('n30').value),
+  };
+  const r = {
+    2: parseFloat(document.getElementById('r2').value),
+    5: parseFloat(document.getElementById('r5').value),
+    10: parseFloat(document.getElementById('r10').value),
+    30: parseFloat(document.getElementById('r30').value),
+  };
+  return { n, r };
+}
+
+function interpCurve(points, tenor) {
+  const keys = Object.keys(points).map(Number).sort((a, b) => a - b);
+  if (tenor <= keys[0]) return points[keys[0]];
+  if (tenor >= keys[keys.length - 1]) return points[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (tenor >= keys[i] && tenor <= keys[i + 1]) {
+      const t = (tenor - keys[i]) / (keys[i + 1] - keys[i]);
+      return points[keys[i]] * (1 - t) + points[keys[i + 1]] * t;
+    }
+  }
+  return 0;
+}
+
+function getCurves() {
+  const { n, r } = getSliderVals();
+  const nom = allTenors.map(t => interpCurve(n, t));
+  const real = allTenors.map(t => interpCurve(r, t));
+  const bei = allTenors.map((t, i) => nom[i] - real[i]);
+  return { nom, real, bei };
+}
+
+// ---- Update slider value labels ----
+function updateSliderLabels() {
+  ['n2','n5','n10','n30','r2','r5','r10','r30'].forEach(id => {
+    document.getElementById(id + 'v').textContent = parseFloat(document.getElementById(id).value).toFixed(2) + '%';
+  });
+}
+
+// ---- Main Curve Canvas ----
+function drawMainCurves() {
+  const canvas = document.getElementById('mainCurveCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const { nom, real, bei } = getCurves();
+  const pad = { top: 25, right: 25, bottom: 40, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const allY = [...nom, ...real];
+  const yMin = Math.floor(Math.min(...allY) - 0.5);
+  const yMax = Math.ceil(Math.max(...allY) + 0.5);
+  const xMin = 0, xMax = 32;
+
+  function toX(t) { return pad.left + (t / xMax) * cw; }
+  function toY(y) { return pad.top + (1 - (y - yMin) / (yMax - yMin)) * ch; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let y = yMin; y <= yMax; y += 0.5) {
+    if (y % 1 !== 0) continue;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(y.toFixed(1) + '%', pad.left - 6, toY(y) + 3);
+  }
+
+  // Tenor labels
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b949e';
+  allTenors.forEach(t => {
+    ctx.fillText(t + 'Y', toX(t), H - pad.bottom + 18);
+  });
+  ctx.fillText('Maturity', W / 2, H - 5);
+
+  // Shaded BEI area
+  ctx.beginPath();
+  allTenors.forEach((t, i) => {
+    if (i === 0) ctx.moveTo(toX(t), toY(nom[i]));
+    else ctx.lineTo(toX(t), toY(nom[i]));
+  });
+  for (let i = allTenors.length - 1; i >= 0; i--) {
+    ctx.lineTo(toX(allTenors[i]), toY(real[i]));
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#f0d06020';
+  ctx.fill();
+
+  // Draw Nominal curve
+  drawLine(ctx, allTenors, nom, toX, toY, '#58a6ff', 2.5);
+  // Draw Real curve
+  drawLine(ctx, allTenors, real, toX, toY, '#3fb950', 2.5);
+
+  // BEI annotations at key points
+  [2, 5, 10, 30].forEach(t => {
+    const idx = allTenors.indexOf(t);
+    if (idx < 0) return;
+    const x = toX(t);
+    const yN = toY(nom[idx]);
+    const yR = toY(real[idx]);
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = '#f0d06088';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, yN);
+    ctx.lineTo(x, yR);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const mid = (yN + yR) / 2;
+    ctx.fillStyle = '#f0d060';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(bei[idx].toFixed(2) + '%', x + 5, mid + 3);
+  });
+}
+
+function drawLine(ctx, tenors, data, toX, toY, color, lw) {
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  tenors.forEach((t, i) => {
+    const x = toX(t), y = toY(data[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  tenors.forEach((t, i) => {
+    ctx.beginPath();
+    ctx.arc(toX(t), toY(data[i]), 3, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+}
+
+// ---- BEI Curve ----
+function drawBEICurve() {
+  const canvas = document.getElementById('beiCurveCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const { bei } = getCurves();
+  const pad = { top: 25, right: 25, bottom: 35, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const yMin = Math.floor(Math.min(...bei) * 2) / 2 - 0.5;
+  const yMax = Math.ceil(Math.max(...bei) * 2) / 2 + 0.5;
+  const xMax = 32;
+
+  function toX(t) { return pad.left + (t / xMax) * cw; }
+  function toY(y) { return pad.top + (1 - (y - yMin) / (yMax - yMin)) * ch; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let y = Math.ceil(yMin); y <= yMax; y += 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(y.toFixed(1) + '%', pad.left - 6, toY(y) + 3);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b949e';
+  allTenors.forEach(t => ctx.fillText(t + 'Y', toX(t), H - pad.bottom + 15));
+
+  // Area fill
+  ctx.beginPath();
+  allTenors.forEach((t, i) => {
+    if (i === 0) ctx.moveTo(toX(t), toY(bei[i]));
+    else ctx.lineTo(toX(t), toY(bei[i]));
+  });
+  ctx.lineTo(toX(allTenors[allTenors.length - 1]), toY(0));
+  ctx.lineTo(toX(allTenors[0]), toY(0));
+  ctx.closePath();
+  ctx.fillStyle = '#f0d06015';
+  ctx.fill();
+
+  // BEI line
+  drawLine(ctx, allTenors, bei, toX, toY, '#f0d060', 3);
+
+  // 2% target line
+  if (yMin < 2 && yMax > 2) {
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#8b949e66';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(2));
+    ctx.lineTo(W - pad.right, toY(2));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('2% target', W - pad.right - 50, toY(2) - 5);
+  }
+
+  // Readout
+  const readout = document.getElementById('beiReadout');
+  const bei2 = bei[allTenors.indexOf(2)];
+  const bei5 = bei[allTenors.indexOf(5)];
+  const bei10 = bei[allTenors.indexOf(10)];
+  const bei30 = bei[allTenors.indexOf(30)];
+  readout.innerHTML = `
+    <span style="color:var(--bei);">2Y BEI: ${bei2.toFixed(2)}%</span> &nbsp;&bull;&nbsp;
+    <span style="color:var(--bei);">5Y BEI: ${bei5.toFixed(2)}%</span> &nbsp;&bull;&nbsp;
+    <span style="color:var(--bei);font-weight:700;">10Y BEI: ${bei10.toFixed(2)}%</span> &nbsp;&bull;&nbsp;
+    <span style="color:var(--bei);">30Y BEI: ${bei30.toFixed(2)}%</span>
+  `;
+}
+
+// ---- Decomposition ----
+function updateDecomp() {
+  const exp = parseFloat(document.getElementById('dExp').value);
+  const rp = parseFloat(document.getElementById('dRp').value);
+  const lp = parseFloat(document.getElementById('dLp').value);
+  const total = exp + rp - lp;
+
+  document.getElementById('dExpV').textContent = exp.toFixed(2) + '%';
+  document.getElementById('dRpV').textContent = rp.toFixed(2) + '%';
+  document.getElementById('dLpV').textContent = lp.toFixed(2) + '%';
+
+  // Decomp bars
+  const maxBar = 4;
+  const container = document.getElementById('decompBars');
+  container.innerHTML = '';
+
+  const items = [
+    { label: 'Expected Inflation', val: exp, color: 'var(--exp-inf)' },
+    { label: '+ Risk Premium', val: rp, color: 'var(--risk-prem)' },
+    { label: '\u2212 Liquidity Premium', val: -lp, color: 'var(--liq-prem)' },
+  ];
+  items.forEach(item => {
+    const pct = Math.abs(item.val) / maxBar * 100;
+    const row = document.createElement('div');
+    row.className = 'decomp-row';
+    row.innerHTML = `
+      <span class="decomp-label">${item.label}</span>
+      <div class="decomp-track">
+        <div class="decomp-fill" style="width:${Math.min(pct, 100)}%;background:${item.color};${item.val < 0 ? 'opacity:0.6;' : ''}">
+          ${Math.abs(item.val).toFixed(2)}%
+        </div>
+      </div>
+      <span class="decomp-val" style="color:${item.color}">${item.val >= 0 ? '+' : ''}${item.val.toFixed(2)}%</span>
+    `;
+    container.appendChild(row);
+  });
+
+  // Stacked bar
+  const stackedBar = document.getElementById('stackedBar');
+  const absTotal = exp + rp + lp;
+  const ePct = (exp / absTotal * 100).toFixed(1);
+  const rpPct = (rp / absTotal * 100).toFixed(1);
+  const lpPct = (lp / absTotal * 100).toFixed(1);
+  stackedBar.innerHTML = `
+    <div class="stacked-segment" style="width:${ePct}%;background:var(--exp-inf);">${exp.toFixed(2)}</div>
+    <div class="stacked-segment" style="width:${rpPct}%;background:var(--risk-prem);">${rp >= 0 ? '+' : ''}${rp.toFixed(2)}</div>
+    <div class="stacked-segment" style="width:${lpPct}%;background:var(--liq-prem);opacity:0.7;">&minus;${lp.toFixed(2)}</div>
+  `;
+
+  document.getElementById('totalBEI').textContent = total.toFixed(2) + '%';
+}
+
+// ---- Forward Breakevens ----
+function drawForwards() {
+  const { bei } = getCurves();
+  const canvas = document.getElementById('fwdCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  // Compute forward breakevens
+  // f(t1,t2) = (BEI_t2 * t2 - BEI_t1 * t1) / (t2 - t1)
+  function fwdBEI(t1, t2) {
+    const idx1 = allTenors.indexOf(t1);
+    const idx2 = allTenors.indexOf(t2);
+    if (idx1 < 0 || idx2 < 0) return 0;
+    return (bei[idx2] * t2 - bei[idx1] * t1) / (t2 - t1);
+  }
+
+  const fwdPeriods = [
+    { label: '2Y2Y', t1: 2, t2: 5, note: 'yr 2\u20135' },  // approximate
+    { label: '5Y5Y', t1: 5, t2: 10, note: 'yr 5\u201310' },
+    { label: '10Y10Y', t1: 10, t2: 20, note: 'yr 10\u201320' },
+    { label: '10Y20Y', t1: 10, t2: 30, note: 'yr 10\u201330' },
+  ];
+  // Compute actual forward values using allTenors index
+  // For 2Y2Y we do (BEI5*5 - BEI2*2)/(5-2) etc.
+  const fwdVals = fwdPeriods.map(f => fwdBEI(f.t1, f.t2));
+
+  // Bar chart
+  const pad = { top: 25, right: 25, bottom: 40, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+  const barW = cw / fwdPeriods.length * 0.6;
+  const gap = cw / fwdPeriods.length;
+
+  const yMin = 0;
+  const yMax = Math.ceil(Math.max(...fwdVals, 3) + 0.5);
+
+  function toY(y) { return pad.top + (1 - (y - yMin) / (yMax - yMin)) * ch; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  for (let y = 0; y <= yMax; y += 0.5) {
+    ctx.strokeStyle = '#21262d';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    if (y % 1 === 0) {
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(y.toFixed(1) + '%', pad.left - 6, toY(y) + 3);
+    }
+  }
+
+  // 2% target
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = '#8b949e55';
+  ctx.beginPath();
+  ctx.moveTo(pad.left, toY(2));
+  ctx.lineTo(W - pad.right, toY(2));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('2% target', W - pad.right, toY(2) - 5);
+
+  // Bars
+  const colors = ['#f0d060', '#e3b341', '#f0883e', '#da6e33'];
+  fwdPeriods.forEach((f, i) => {
+    const x = pad.left + gap * i + (gap - barW) / 2;
+    const barH = toY(0) - toY(fwdVals[i]);
+    const y = toY(fwdVals[i]);
+
+    // Bar gradient
+    const grad = ctx.createLinearGradient(x, y, x, toY(0));
+    grad.addColorStop(0, colors[i]);
+    grad.addColorStop(1, colors[i] + '44');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+    ctx.fill();
+
+    // Value on top
+    ctx.fillStyle = colors[i];
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(fwdVals[i].toFixed(2) + '%', x + barW / 2, y - 8);
+
+    // Label below
+    ctx.fillStyle = '#e6edf3';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(f.label, x + barW / 2, toY(0) + 16);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px sans-serif';
+    ctx.fillText(f.note, x + barW / 2, toY(0) + 28);
+  });
+
+  // Table
+  const tbody = document.querySelector('#fwdTable tbody');
+  tbody.innerHTML = '';
+  fwdPeriods.forEach((f, i) => {
+    const idx1 = allTenors.indexOf(f.t1);
+    const idx2 = allTenors.indexOf(f.t2);
+    const tr = document.createElement('tr');
+    const fwdColor = fwdVals[i] > 2.5 ? '#f0883e' : fwdVals[i] < 1.5 ? '#3fb950' : '#f0d060';
+    tr.innerHTML = `
+      <td style="color:var(--text);">${f.label}</td>
+      <td style="color:var(--bei);">${bei[idx1].toFixed(2)}% (${f.t1}Y)</td>
+      <td style="color:var(--bei);">${bei[idx2].toFixed(2)}% (${f.t2}Y)</td>
+      <td style="color:${fwdColor};font-weight:700;">${fwdVals[i].toFixed(2)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- Interpretation Panel ----
+function updateInterpretation() {
+  const { bei } = getCurves();
+  const bei2 = bei[allTenors.indexOf(2)];
+  const bei5 = bei[allTenors.indexOf(5)];
+  const bei10 = bei[allTenors.indexOf(10)];
+  const bei30 = bei[allTenors.indexOf(30)];
+
+  // 5Y5Y forward
+  const fwd5y5y = (bei10 * 10 - bei5 * 5) / 5;
+
+  const panel = document.getElementById('interpPanel');
+  let items = [];
+
+  // Near-term vs long-term
+  if (bei2 > bei10 + 0.3) {
+    items.push({ icon: '\u26A0', text: `Near-term inflation expectations (${bei2.toFixed(2)}%) exceed long-term (${bei10.toFixed(2)}%). The market sees elevated inflation as transitory.` });
+  } else if (bei10 > bei2 + 0.3) {
+    items.push({ icon: '\u2191', text: `Long-term inflation expectations (${bei10.toFixed(2)}%) are higher than near-term (${bei2.toFixed(2)}%). The market anticipates rising inflation or de-anchoring risks.` });
+  } else {
+    items.push({ icon: '\u2713', text: `Inflation expectations are relatively flat across the curve (~${bei10.toFixed(2)}%), suggesting anchored expectations.` });
+  }
+
+  // 5Y5Y
+  if (fwd5y5y > 2.5) {
+    items.push({ icon: '\u2191', text: `The 5Y5Y forward (${fwd5y5y.toFixed(2)}%) is above the Fed's 2% target, signaling the market may doubt the Fed's ability to contain long-run inflation.` });
+  } else if (fwd5y5y < 1.5) {
+    items.push({ icon: '\u2193', text: `The 5Y5Y forward (${fwd5y5y.toFixed(2)}%) is well below 2%, suggesting deflationary concerns or excess demand for inflation protection.` });
+  } else {
+    items.push({ icon: '\u2713', text: `The 5Y5Y forward (${fwd5y5y.toFixed(2)}%) is near the Fed's 2% target, indicating well-anchored long-run expectations.` });
+  }
+
+  // Level commentary
+  if (bei10 > 3) {
+    items.push({ icon: '\u2622', text: `10Y breakeven at ${bei10.toFixed(2)}% is elevated. Consider whether this reflects true inflation expectations or elevated risk premium.` });
+  } else if (bei10 < 1.5) {
+    items.push({ icon: '\u2744', text: `10Y breakeven at ${bei10.toFixed(2)}% is low. This could reflect deflationary fears, a large TIPS liquidity premium, or low risk premium.` });
+  }
+
+  // TIPS vs Nominal spread
+  items.push({ icon: '\u2194', text: `At current levels, a TIPS investor needs realized CPI inflation to exceed ${bei10.toFixed(2)}% over 10 years to outperform nominal Treasuries.` });
+
+  panel.innerHTML = items.map(i => `
+    <div class="interp-item">
+      <span class="interp-icon">${i.icon}</span>
+      <span>${i.text}</span>
+    </div>
+  `).join('');
+}
+
+// ---- Historical Chart ----
+function drawHistory() {
+  const canvas = document.getElementById('histCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  // Stylized historical data (approximate)
+  const years = [2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
+                 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+  const beiHist = [1.8, 2.3, 2.5, 2.5, 2.4, 0.1, 2.0, 2.2, 2.0, 2.3,
+                   2.1, 2.0, 1.6, 1.7, 1.9, 2.1, 1.7, 1.6, 2.5, 2.8, 2.3, 2.3];
+  const cpiHist = [2.3, 2.7, 3.4, 3.2, 2.8, 3.8, -0.4, 1.6, 3.2, 2.1,
+                   1.5, 1.6, 0.1, 1.3, 2.1, 2.4, 1.8, 1.2, 4.7, 8.0, 4.1, 2.9];
+
+  const pad = { top: 25, right: 20, bottom: 35, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const xMin = 2002, xMax = 2025;
+  const yMin = -1, yMax = 9;
+
+  function toX(yr) { return pad.left + (yr - xMin) / (xMax - xMin) * cw; }
+  function toY(y) { return pad.top + (1 - (y - yMin) / (yMax - yMin)) * ch; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  for (let y = 0; y <= yMax; y += 2) {
+    ctx.strokeStyle = '#21262d';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(y + '%', pad.left - 6, toY(y) + 3);
+  }
+  for (let yr = 2004; yr <= 2024; yr += 4) {
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(yr.toString(), toX(yr), H - pad.bottom + 15);
+  }
+
+  // BEI line
+  ctx.beginPath();
+  ctx.strokeStyle = '#f0d060';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  years.forEach((yr, i) => {
+    if (i === 0) ctx.moveTo(toX(yr), toY(beiHist[i]));
+    else ctx.lineTo(toX(yr), toY(beiHist[i]));
+  });
+  ctx.stroke();
+
+  // CPI bars
+  const barW = cw / years.length * 0.5;
+  years.forEach((yr, i) => {
+    const x = toX(yr) - barW / 2;
+    const h = toY(0) - toY(Math.abs(cpiHist[i]));
+    const y = cpiHist[i] >= 0 ? toY(cpiHist[i]) : toY(0);
+    const color = cpiHist[i] >= 0 ? '#da363388' : '#3fb95066';
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, barW, h);
+  });
+
+  // Crisis/event annotations
+  ctx.fillStyle = '#f8514988';
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'center';
+
+  // 2008 crash
+  ctx.save();
+  ctx.translate(toX(2008), toY(beiHist[years.indexOf(2008)]) - 12);
+  ctx.fillStyle = '#f85149';
+  ctx.fillText('GFC', 0, 0);
+  ctx.restore();
+
+  // 2020 COVID
+  ctx.save();
+  ctx.translate(toX(2020), toY(beiHist[years.indexOf(2020)]) - 12);
+  ctx.fillStyle = '#f85149';
+  ctx.fillText('COVID', 0, 0);
+  ctx.restore();
+
+  // 2022 inflation
+  ctx.save();
+  ctx.translate(toX(2022), toY(cpiHist[years.indexOf(2022)]) - 8);
+  ctx.fillStyle = '#da3633';
+  ctx.fillText('8% CPI', 0, 0);
+  ctx.restore();
+
+  // BEI dots
+  years.forEach((yr, i) => {
+    ctx.beginPath();
+    ctx.arc(toX(yr), toY(beiHist[i]), 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#f0d060';
+    ctx.fill();
+  });
+}
+
+// ---- Master update ----
+function updateAll() {
+  updateSliderLabels();
+  drawMainCurves();
+  drawBEICurve();
+  drawForwards();
+  updateInterpretation();
+}
+
+// ---- Init ----
+function init() {
+  updateAll();
+  updateDecomp();
+  drawHistory();
+}
+
+window.addEventListener('resize', () => {
+  updateAll();
+  drawHistory();
+});
+
+init();
+</script>
+</body>
+</html>

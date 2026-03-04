@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fisher Equation — Interactive Dashboard</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-inset: #0d1117;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #e3b341;
+  --accent-dim: #e3b34133;
+  --nominal: #58a6ff;
+  --real: #3fb950;
+  --inflation: #e3b341;
+  --danger: #f85149;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+}
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.header .badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.header h1 span { color: var(--accent); }
+.header .formula-tag {
+  color: var(--text-muted);
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  margin-left: auto;
+}
+
+/* Layout */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.full-width { grid-column: 1 / -1; }
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+}
+.card h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.card h2 .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Gauge Section */
+.gauge-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+}
+.gauge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.gauge-svg { width: 180px; height: 130px; }
+.gauge-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.gauge-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.gauge-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.gauge-input input[type="range"] {
+  width: 140px;
+  accent-color: var(--accent);
+}
+.equation-display {
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.2rem;
+  font-family: 'Georgia', serif;
+  color: var(--text);
+  background: var(--bg-inset);
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+.equation-display .eq-nominal { color: var(--nominal); }
+.equation-display .eq-real { color: var(--real); }
+.equation-display .eq-inflation { color: var(--inflation); }
+
+/* Lock toggle */
+.lock-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.lock-btn {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.lock-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.lock-btn:hover { border-color: var(--accent); }
+
+/* Canvas */
+canvas {
+  width: 100%;
+  height: 300px;
+  display: block;
+  border-radius: 6px;
+}
+
+/* Slider groups */
+.slider-group {
+  margin-bottom: 1rem;
+}
+.slider-group label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+.slider-group label span.val {
+  color: var(--accent);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 600;
+}
+.slider-group input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* Comparison table */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+.comparison-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.comparison-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #21262d;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+.comparison-table tr:hover { background: #21262d44; }
+
+/* Annotation callout */
+.callout {
+  background: var(--bg-inset);
+  border-left: 3px solid var(--accent);
+  padding: 1rem 1.25rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.callout strong { color: var(--text); }
+
+/* Scenario builder */
+.scenario-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.scenario-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.scenario-field label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.scenario-field input {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  width: 120px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.scenario-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.scenario-result {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.scenario-result .big {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.scenario-result .sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* History bars */
+.history-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+}
+.history-bar-row .era {
+  width: 100px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  text-align: right;
+}
+.history-bar-row .bar-track {
+  flex: 1;
+  height: 20px;
+  background: var(--bg-inset);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.history-bar-row .bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+.history-bar-row .bar-val {
+  width: 50px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .container { grid-template-columns: 1fr; }
+  .full-width { grid-column: 1; }
+  .gauge-svg { width: 150px; height: 110px; }
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <span class="badge">Foundational</span>
+    <h1><span>Fisher Equation</span> Dashboard</h1>
+    <span class="formula-tag">(1 + i) = (1 + r)(1 + &pi;<sup>e</sup>)</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ============================================================ -->
+  <!-- GAUGE SECTION: THE KEY VISUAL                                 -->
+  <!-- ============================================================ -->
+  <div class="card full-width">
+    <h2><span class="dot"></span>Interactive Fisher Identity &mdash; Three Interconnected Gauges</h2>
+    <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:0.75rem;">
+      Adjust any two variables and the third updates automatically.
+      Choose which variable to <strong style="color:var(--accent);">solve for</strong> below.
+    </p>
+
+    <div class="lock-controls">
+      <button class="lock-btn active" data-solve="nominal" onclick="setSolveFor('nominal')">Solve for Nominal Rate (i)</button>
+      <button class="lock-btn" data-solve="real" onclick="setSolveFor('real')">Solve for Real Rate (r)</button>
+      <button class="lock-btn" data-solve="inflation" onclick="setSolveFor('inflation')">Solve for Expected Inflation (&pi;<sup>e</sup>)</button>
+    </div>
+
+    <div class="gauge-row">
+      <!-- Nominal Rate Gauge -->
+      <div class="gauge-container" id="gauge-nominal-wrap">
+        <svg class="gauge-svg" viewBox="0 0 200 130" id="gauge-nominal-svg"></svg>
+        <div class="gauge-label">Nominal Rate (i)</div>
+        <div class="gauge-value eq-nominal" id="gauge-nominal-val" style="color:var(--nominal);">5.00%</div>
+        <div class="gauge-input" id="gauge-nominal-input">
+          <input type="range" min="0" max="20" step="0.1" value="5" id="slider-nominal"
+                 oninput="onSliderChange('nominal')">
+        </div>
+      </div>
+
+      <!-- Equals sign -->
+      <div style="font-size:2rem;color:var(--text-muted);padding-top:0.5rem;font-weight:300;">=</div>
+
+      <!-- Real Rate Gauge -->
+      <div class="gauge-container" id="gauge-real-wrap">
+        <svg class="gauge-svg" viewBox="0 0 200 130" id="gauge-real-svg"></svg>
+        <div class="gauge-label">Real Rate (r)</div>
+        <div class="gauge-value" id="gauge-real-val" style="color:var(--real);">2.00%</div>
+        <div class="gauge-input" id="gauge-real-input">
+          <input type="range" min="-5" max="15" step="0.1" value="2" id="slider-real"
+                 oninput="onSliderChange('real')">
+        </div>
+      </div>
+
+      <!-- Times sign -->
+      <div style="font-size:1.8rem;color:var(--text-muted);padding-top:0.5rem;font-family:serif;">&times;</div>
+
+      <!-- Inflation Gauge -->
+      <div class="gauge-container" id="gauge-inflation-wrap">
+        <svg class="gauge-svg" viewBox="0 0 200 130" id="gauge-inflation-svg"></svg>
+        <div class="gauge-label">Expected Inflation (&pi;<sup>e</sup>)</div>
+        <div class="gauge-value" id="gauge-inflation-val" style="color:var(--inflation);">3.00%</div>
+        <div class="gauge-input" id="gauge-inflation-input">
+          <input type="range" min="-2" max="20" step="0.1" value="3" id="slider-inflation"
+                 oninput="onSliderChange('inflation')">
+        </div>
+      </div>
+    </div>
+
+    <!-- Live equation display -->
+    <div class="equation-display" id="equation-display">
+      (1 + <span class="eq-nominal">0.0500</span>) = (1 + <span class="eq-real">0.0200</span>) &times; (1 + <span class="eq-inflation">0.0300</span>)
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- YIELD CURVE COMPARISON                                        -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Nominal vs. TIPS Yield Curves</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      The spread between nominal Treasuries and TIPS is driven by inflation expectations.
+      Adjust expected inflation to see how curves shift.
+    </p>
+    <canvas id="yieldCurveCanvas"></canvas>
+    <div style="margin-top:1rem;">
+      <div class="slider-group">
+        <label>Parallel inflation shift <span class="val" id="infShiftVal">+2.5%</span></label>
+        <input type="range" min="0" max="8" step="0.1" value="2.5" id="infShiftSlider"
+               oninput="updateYieldCurves()">
+      </div>
+      <div class="slider-group">
+        <label>Inflation term premium (10Y - 2Y) <span class="val" id="infSlopeVal">+0.5%</span></label>
+        <input type="range" min="-1" max="3" step="0.1" value="0.5" id="infSlopeSlider"
+               oninput="updateYieldCurves()">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- APPROXIMATION VS EXACT                                        -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Approximation vs. Exact Fisher</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      The linear approximation <em>i &asymp; r + &pi;<sup>e</sup></em> ignores the cross-term <em>r &middot; &pi;<sup>e</sup></em>.
+      See when it breaks down in high-inflation regimes.
+    </p>
+    <canvas id="approxCanvas"></canvas>
+    <table class="comparison-table" id="approxTable">
+      <thead>
+        <tr><th>&pi;<sup>e</sup></th><th>r</th><th>Exact i</th><th>Approx i</th><th>Error</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCENARIO BUILDER                                              -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Scenario Builder</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      &ldquo;What if inflation is 8%? What should the nominal 10Y yield be?&rdquo;
+    </p>
+
+    <div class="scenario-row">
+      <div class="scenario-field">
+        <label>Expected Inflation (%)</label>
+        <input type="number" id="scen-pi" value="8" step="0.5" oninput="updateScenario()">
+      </div>
+      <div class="scenario-field">
+        <label>Real Rate (%)</label>
+        <input type="number" id="scen-r" value="2" step="0.25" oninput="updateScenario()">
+      </div>
+    </div>
+
+    <div class="scenario-result" id="scenResult">
+      <div class="big">10.16%</div>
+      <div class="sub">Implied nominal 10Y yield (exact Fisher)</div>
+    </div>
+
+    <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+      <div class="scenario-result" style="flex:1;min-width:140px;background:transparent;border-color:var(--border);">
+        <div class="big" style="font-size:1.3rem;color:var(--text);" id="scen-approx">10.00%</div>
+        <div class="sub">Linear approximation</div>
+      </div>
+      <div class="scenario-result" style="flex:1;min-width:140px;background:transparent;border-color:var(--border);">
+        <div class="big" style="font-size:1.3rem;" id="scen-error">16 bps</div>
+        <div class="sub">Cross-term error</div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:1rem;">
+      <strong>Why it matters:</strong> In the 1970s &amp; 80s, U.S. inflation ran 6&ndash;14%.
+      At those levels the cross-term r&middot;&pi;<sup>e</sup> adds 50&ndash;200+ bps &mdash;
+      material for bond pricing, swap valuation, and TIPS relative value.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- HISTORICAL REAL RATES                                         -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>Historical Real Rates (Approximate)</h2>
+    <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;">
+      Real rates vary over macro regimes. Understanding where real rates &ldquo;should be&rdquo;
+      helps calibrate the Fisher identity for scenario analysis.
+    </p>
+    <div id="historyBars"></div>
+    <div class="callout">
+      <strong>Key takeaway:</strong> Real rates are <em>not</em> constant. They reflect growth expectations,
+      monetary policy, and supply/demand for safe assets. The Fisher equation shows that nominal yields
+      are a function of these real-rate regimes plus inflation expectations.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- EDUCATIONAL: ABOUT FISHER                                     -->
+  <!-- ============================================================ -->
+  <div class="card">
+    <h2><span class="dot"></span>About Irving Fisher &amp; Why This Matters</h2>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:250px;">
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">
+          Irving Fisher (1867&ndash;1947) was an American economist who formalized the relationship
+          between nominal interest rates, real interest rates, and expected inflation in his seminal
+          1930 work <em>The Theory of Interest</em>.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;">
+          The Fisher Equation is the foundational identity of inflation-linked markets.
+          Every TIPS trader, inflation swap desk, and central bank analyst uses it &mdash;
+          either explicitly or implicitly &mdash; every day.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.85rem;">
+          <strong style="color:var(--accent);">The core insight:</strong> Nominal rates embed both
+          real compensation for time preference (the real rate) and compensation for the expected
+          erosion of purchasing power (inflation expectations). Separating these two is the key
+          to understanding fixed income markets.
+        </p>
+      </div>
+      <div style="flex:1;min-width:250px;">
+        <div style="background:var(--bg-inset);border-radius:8px;padding:1rem;">
+          <h3 style="font-size:0.8rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem;">
+            Why Practitioners Care
+          </h3>
+          <ul style="color:var(--text-muted);font-size:0.82rem;list-style:none;">
+            <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--nominal);">
+              <strong style="color:var(--text);">TIPS vs. Nominals:</strong> The Fisher equation tells you
+              the &ldquo;fair&rdquo; spread between nominal and real bonds.
+            </li>
+            <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--real);">
+              <strong style="color:var(--text);">Central Banks:</strong> By targeting nominal rates and
+              communicating inflation targets, the Fed implicitly sets real rates via Fisher.
+            </li>
+            <li style="margin-bottom:0.5rem;padding-left:1rem;border-left:2px solid var(--inflation);">
+              <strong style="color:var(--text);">Inflation Swaps:</strong> The fixed rate on an inflation
+              swap is a market-priced Fisher decomposition.
+            </li>
+            <li style="padding-left:1rem;border-left:2px solid var(--danger);">
+              <strong style="color:var(--text);">Risk Management:</strong> Hedging inflation exposure
+              requires understanding how nominal and real rates co-move.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Fisher Equation Dashboard &mdash; Fixed Income Model Zoo &mdash;
+  <a href="../../">Back to Inflation Models</a>
+</div>
+
+<script>
+/* ================================================================
+   FISHER EQUATION INTERACTIVE DASHBOARD
+   ================================================================ */
+
+// State
+let solveFor = 'nominal'; // which variable to solve for
+const GAUGE_START_ANGLE = -Math.PI * 0.85;
+const GAUGE_END_ANGLE = Math.PI * 0.05;
+const GAUGE_RANGE = GAUGE_END_ANGLE - GAUGE_START_ANGLE;
+
+// ---- Gauge Drawing ----
+function drawGauge(svgId, value, minVal, maxVal, color, unit) {
+  const svg = document.getElementById(svgId);
+  const cx = 100, cy = 100, r = 70;
+  const pct = Math.max(0, Math.min(1, (value - minVal) / (maxVal - minVal)));
+  const angle = GAUGE_START_ANGLE + pct * GAUGE_RANGE;
+
+  // Build tick marks
+  let ticks = '';
+  const numTicks = 20;
+  for (let i = 0; i <= numTicks; i++) {
+    const a = GAUGE_START_ANGLE + (i / numTicks) * GAUGE_RANGE;
+    const isMajor = i % 5 === 0;
+    const r1 = isMajor ? r - 12 : r - 8;
+    const r2 = r;
+    const x1 = cx + r1 * Math.cos(a), y1 = cy + r1 * Math.sin(a);
+    const x2 = cx + r2 * Math.cos(a), y2 = cy + r2 * Math.sin(a);
+    ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isMajor ? '#484f58' : '#30363d'}" stroke-width="${isMajor ? 2 : 1}"/>`;
+    if (isMajor) {
+      const tr = r - 20;
+      const tx = cx + tr * Math.cos(a), ty = cy + tr * Math.sin(a);
+      const labelVal = minVal + (i / numTicks) * (maxVal - minVal);
+      ticks += `<text x="${tx}" y="${ty}" fill="#8b949e" font-size="8" text-anchor="middle" dominant-baseline="middle" font-family="monospace">${labelVal.toFixed(0)}</text>`;
+    }
+  }
+
+  // Arc background
+  const arcBg = describeArc(cx, cy, r, GAUGE_START_ANGLE, GAUGE_END_ANGLE);
+  // Arc filled
+  const arcFill = describeArc(cx, cy, r, GAUGE_START_ANGLE, angle);
+
+  // Needle
+  const nx = cx + (r - 25) * Math.cos(angle);
+  const ny = cy + (r - 25) * Math.sin(angle);
+
+  svg.innerHTML = `
+    <path d="${arcBg}" fill="none" stroke="#21262d" stroke-width="10" stroke-linecap="round"/>
+    <path d="${arcFill}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+    ${ticks}
+    <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="6" fill="${color}" opacity="0.9"/>
+    <circle cx="${cx}" cy="${cy}" r="3" fill="#0d1117"/>
+  `;
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
+
+// ---- Fisher Logic ----
+function fisherExact(r, pi) {
+  return (1 + r) * (1 + pi) - 1;
+}
+function fisherSolveReal(i, pi) {
+  return (1 + i) / (1 + pi) - 1;
+}
+function fisherSolveInflation(i, r) {
+  return (1 + i) / (1 + r) - 1;
+}
+
+function setSolveFor(mode) {
+  solveFor = mode;
+  document.querySelectorAll('.lock-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.solve === mode);
+  });
+  // Show/hide slider inputs
+  document.getElementById('gauge-nominal-input').style.display = mode === 'nominal' ? 'none' : 'flex';
+  document.getElementById('gauge-real-input').style.display = mode === 'real' ? 'none' : 'flex';
+  document.getElementById('gauge-inflation-input').style.display = mode === 'inflation' ? 'none' : 'flex';
+  updateGauges();
+}
+
+function onSliderChange(which) {
+  updateGauges();
+}
+
+function updateGauges() {
+  let i = parseFloat(document.getElementById('slider-nominal').value);
+  let r = parseFloat(document.getElementById('slider-real').value);
+  let pi = parseFloat(document.getElementById('slider-inflation').value);
+
+  // Solve for the selected variable
+  if (solveFor === 'nominal') {
+    i = fisherExact(r / 100, pi / 100) * 100;
+    document.getElementById('slider-nominal').value = i;
+  } else if (solveFor === 'real') {
+    r = fisherSolveReal(i / 100, pi / 100) * 100;
+    document.getElementById('slider-real').value = r;
+  } else {
+    pi = fisherSolveInflation(i / 100, r / 100) * 100;
+    document.getElementById('slider-inflation').value = pi;
+  }
+
+  // Update gauges
+  drawGauge('gauge-nominal-svg', i, 0, 20, '#58a6ff');
+  drawGauge('gauge-real-svg', r, -5, 15, '#3fb950');
+  drawGauge('gauge-inflation-svg', pi, -2, 20, '#e3b341');
+
+  // Update value labels
+  document.getElementById('gauge-nominal-val').textContent = i.toFixed(2) + '%';
+  document.getElementById('gauge-real-val').textContent = r.toFixed(2) + '%';
+  document.getElementById('gauge-inflation-val').textContent = pi.toFixed(2) + '%';
+
+  // Update equation display
+  const eqDisplay = document.getElementById('equation-display');
+  const lhs = (1 + i / 100).toFixed(6);
+  const rhs1 = (1 + r / 100).toFixed(6);
+  const rhs2 = (1 + pi / 100).toFixed(6);
+  const rhs = ((1 + r / 100) * (1 + pi / 100)).toFixed(6);
+  eqDisplay.innerHTML = `(1 + <span class="eq-nominal">${(i/100).toFixed(4)}</span>) = (1 + <span class="eq-real">${(r/100).toFixed(4)}</span>) &times; (1 + <span class="eq-inflation">${(pi/100).toFixed(4)}</span>)<br>
+    <span style="color:var(--text-muted);font-size:0.85rem;">${lhs} = ${rhs} &nbsp; &#10003;</span>`;
+}
+
+// ---- Yield Curve Comparison ----
+function updateYieldCurves() {
+  const canvas = document.getElementById('yieldCurveCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const infShift = parseFloat(document.getElementById('infShiftSlider').value);
+  const infSlope = parseFloat(document.getElementById('infSlopeSlider').value);
+
+  document.getElementById('infShiftVal').textContent = '+' + infShift.toFixed(1) + '%';
+  document.getElementById('infSlopeVal').textContent = '+' + infSlope.toFixed(1) + '%';
+
+  // Base TIPS curve (real yields)
+  const tenors = [0.5, 1, 2, 3, 5, 7, 10, 20, 30];
+  const tipsYields = [1.8, 1.9, 2.0, 2.05, 2.1, 2.15, 2.2, 2.3, 2.35];
+
+  // Nominal = TIPS + inflation expectation (with term slope)
+  const nomYields = tenors.map((t, idx) => {
+    const infAtT = infShift + infSlope * (t / 30);
+    return tipsYields[idx] + infAtT;
+  });
+
+  // Chart dimensions
+  const pad = { top: 30, right: 20, bottom: 40, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const xMin = 0, xMax = 30;
+  const allY = [...tipsYields, ...nomYields];
+  const yMin = Math.floor(Math.min(...allY) - 0.5);
+  const yMax = Math.ceil(Math.max(...allY) + 0.5);
+
+  function toX(t) { return pad.left + (t - xMin) / (xMax - xMin) * cw; }
+  function toY(y) { return pad.top + (1 - (y - yMin) / (yMax - yMin)) * ch; }
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let y = yMin; y <= yMax; y += 1) {
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(y.toFixed(0) + '%', pad.left - 6, toY(y) + 3);
+  }
+
+  // Tenor labels
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b949e';
+  tenors.forEach(t => {
+    ctx.fillText(t + 'Y', toX(t), H - pad.bottom + 18);
+  });
+  ctx.fillText('Maturity', W / 2, H - 5);
+
+  // Shaded area between curves
+  ctx.beginPath();
+  tenors.forEach((t, i) => {
+    const x = toX(t);
+    if (i === 0) ctx.moveTo(x, toY(nomYields[i]));
+    else ctx.lineTo(x, toY(nomYields[i]));
+  });
+  for (let i = tenors.length - 1; i >= 0; i--) {
+    ctx.lineTo(toX(tenors[i]), toY(tipsYields[i]));
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#e3b34118';
+  ctx.fill();
+
+  // Draw curves
+  function drawCurve(data, color, lw) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lw;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    tenors.forEach((t, i) => {
+      const x = toX(t), y = toY(data[i]);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    // dots
+    tenors.forEach((t, i) => {
+      ctx.beginPath();
+      ctx.arc(toX(t), toY(data[i]), 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
+  }
+
+  drawCurve(nomYields, '#58a6ff', 2.5);
+  drawCurve(tipsYields, '#3fb950', 2.5);
+
+  // Spread annotation at 10Y
+  const idx10 = tenors.indexOf(10);
+  const x10 = toX(10);
+  const yNom10 = toY(nomYields[idx10]);
+  const yTips10 = toY(tipsYields[idx10]);
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = '#e3b341';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x10, yNom10);
+  ctx.lineTo(x10, yTips10);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const spreadMid = (yNom10 + yTips10) / 2;
+  ctx.fillStyle = '#e3b341';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText((nomYields[idx10] - tipsYields[idx10]).toFixed(1) + '% BEI', x10 + 8, spreadMid + 4);
+
+  // Legend
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#58a6ff';
+  ctx.fillText('\u25CF Nominal Treasury', pad.left + 5, pad.top - 10);
+  ctx.fillStyle = '#3fb950';
+  ctx.fillText('\u25CF TIPS (Real)', pad.left + 150, pad.top - 10);
+  ctx.fillStyle = '#e3b341';
+  ctx.fillText('\u25CF Inflation Expectation', pad.left + 260, pad.top - 10);
+}
+
+// ---- Approximation vs Exact ----
+function updateApprox() {
+  const canvas = document.getElementById('approxCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const rFixed = 2; // fixed real rate at 2%
+  const piRange = [];
+  for (let p = 0; p <= 20; p += 0.5) piRange.push(p);
+
+  const exactVals = piRange.map(p => fisherExact(rFixed / 100, p / 100) * 100);
+  const approxVals = piRange.map(p => rFixed + p);
+  const errors = piRange.map((p, i) => (exactVals[i] - approxVals[i]) * 100); // in bps
+
+  const pad = { top: 30, right: 20, bottom: 40, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const xMin = 0, xMax = 20;
+  const yMin = 0, yMax = Math.ceil(Math.max(...exactVals) + 1);
+
+  function toX(v) { return pad.left + (v - xMin) / (xMax - xMin) * cw; }
+  function toY(v) { return pad.top + (1 - (v - yMin) / (yMax - yMin)) * ch; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let y = yMin; y <= yMax; y += 2) {
+    ctx.beginPath();
+    ctx.moveTo(pad.left, toY(y));
+    ctx.lineTo(W - pad.right, toY(y));
+    ctx.stroke();
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(y + '%', pad.left - 6, toY(y) + 3);
+  }
+  for (let x = 0; x <= 20; x += 5) {
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(x + '%', toX(x), H - pad.bottom + 16);
+  }
+  ctx.fillText('Expected Inflation (pie)', W / 2, H - 5);
+
+  // Exact curve
+  ctx.beginPath();
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 2.5;
+  piRange.forEach((p, i) => {
+    const x = toX(p), y = toY(exactVals[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Approx curve
+  ctx.beginPath();
+  ctx.strokeStyle = '#f0883e';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  piRange.forEach((p, i) => {
+    const x = toX(p), y = toY(approxVals[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Error region shading
+  ctx.beginPath();
+  piRange.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(toX(p), toY(exactVals[i]));
+    else ctx.lineTo(toX(p), toY(exactVals[i]));
+  });
+  for (let i = piRange.length - 1; i >= 0; i--) {
+    ctx.lineTo(toX(piRange[i]), toY(approxVals[i]));
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#f8514922';
+  ctx.fill();
+
+  // Legend
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#58a6ff';
+  ctx.textAlign = 'left';
+  ctx.fillText('\u25CF Exact: (1+r)(1+\u03C0e)-1', pad.left + 5, pad.top - 10);
+  ctx.fillStyle = '#f0883e';
+  ctx.fillText('--- Approx: r + \u03C0e', pad.left + 200, pad.top - 10);
+
+  // Annotation
+  ctx.fillStyle = '#f85149';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('Error grows!', toX(15) - 10, toY(exactVals[30]) - 10);
+
+  // Table
+  const tbody = document.querySelector('#approxTable tbody');
+  tbody.innerHTML = '';
+  [1, 2, 3, 5, 8, 10, 15, 20].forEach(pi => {
+    const exact = fisherExact(rFixed / 100, pi / 100) * 100;
+    const approx = rFixed + pi;
+    const err = (exact - approx) * 100; // bps
+    const tr = document.createElement('tr');
+    const errColor = err > 10 ? '#f85149' : err > 5 ? '#f0883e' : '#3fb950';
+    tr.innerHTML = `
+      <td style="color:var(--inflation)">${pi.toFixed(1)}%</td>
+      <td style="color:var(--real)">${rFixed.toFixed(1)}%</td>
+      <td style="color:var(--nominal)">${exact.toFixed(3)}%</td>
+      <td style="color:#f0883e">${approx.toFixed(3)}%</td>
+      <td style="color:${errColor}">${err.toFixed(1)} bps</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- Historical Real Rates ----
+function buildHistoryBars() {
+  const data = [
+    { era: '1960s', rate: 2.5, color: '#3fb950' },
+    { era: '1970s', rate: -1.5, color: '#f85149' },
+    { era: '1980s', rate: 5.0, color: '#58a6ff' },
+    { era: '1990s', rate: 3.5, color: '#3fb950' },
+    { era: '2000s', rate: 1.5, color: '#e3b341' },
+    { era: '2010s', rate: 0.3, color: '#f0883e' },
+    { era: '2020s', rate: 1.8, color: '#e3b341' },
+  ];
+  const maxAbs = 6;
+  const container = document.getElementById('historyBars');
+  container.innerHTML = '';
+  data.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'history-bar-row';
+    const pct = Math.abs(d.rate) / maxAbs * 100;
+    const isNeg = d.rate < 0;
+    row.innerHTML = `
+      <span class="era">${d.era}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${d.color};${isNeg ? 'opacity:0.6;' : ''}"></div>
+      </div>
+      <span class="bar-val" style="color:${d.color}">${d.rate > 0 ? '+' : ''}${d.rate.toFixed(1)}%</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ---- Scenario Builder ----
+function updateScenario() {
+  const pi = parseFloat(document.getElementById('scen-pi').value) || 0;
+  const r = parseFloat(document.getElementById('scen-r').value) || 0;
+  const exact = fisherExact(r / 100, pi / 100) * 100;
+  const approx = r + pi;
+  const error = (exact - approx) * 100;
+
+  document.querySelector('#scenResult .big').textContent = exact.toFixed(2) + '%';
+  document.getElementById('scen-approx').textContent = approx.toFixed(2) + '%';
+  document.getElementById('scen-error').textContent = Math.abs(error).toFixed(0) + ' bps';
+}
+
+// ---- Init ----
+function init() {
+  setSolveFor('nominal');
+  updateYieldCurves();
+  updateApprox();
+  buildHistoryBars();
+  updateScenario();
+}
+
+window.addEventListener('resize', () => {
+  updateYieldCurves();
+  updateApprox();
+});
+
+init();
+</script>
+</body>
+</html>
